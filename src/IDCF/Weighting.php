@@ -30,7 +30,7 @@ class Weighting
     protected function addNewTokenToWeight($token, $weight)
     {
         foreach ($token as $word => $count) {
-            if (!isset($weight[$word])) {
+            if (! isset($weight[$word])) {
                 $weight[$word] = [];
             }
         }
@@ -58,7 +58,7 @@ class Weighting
         foreach ($listDocName as $dm) {
             if ($dm != $docName) {
                 foreach ($weight as $word => $w) {
-                    if (!isset($weight[$word]["tf"][$dm])) {
+                    if (! isset($weight[$word]["tf"][$dm])) {
                         $weight[$word]["tf"][$dm] = 0;
                     }
                 }

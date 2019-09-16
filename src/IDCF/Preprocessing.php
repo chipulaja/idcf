@@ -85,7 +85,7 @@ class Preprocessing
         $words = explode(" ", $sentence);
         $token = [];
         foreach ($words as $word) {
-            if(isset($token[$word])) {
+            if (isset($token[$word])) {
                 $token[$word] += 1;
             } else {
                 $token[$word] = 1;
