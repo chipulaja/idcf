@@ -18,6 +18,7 @@ class Weighting
     {
         $weight = $this->addNewTokenToWeight($token, $weight);
         $weight = $this->termFrequencyCounter($token, $weight, $docName);
+        $weight = $this->tfIdfCounter($weight);
 
         return $weight;
     }
@@ -62,6 +63,30 @@ class Weighting
                         $weight[$word]["tf"][$dm] = 0;
                     }
                 }
+            }
+        }
+
+        return $weight;
+    }
+
+    /**
+     * @param array $weight
+     * @return array
+     */
+    protected function tfIdfCounter($weight)
+    {
+        $idf = [];
+        foreach ($weight as $word => $data) {
+            $lenDoc = sizeof($data["tf"]);
+            $docNoTerm = array_count_values($data["tf"]);
+            $docNoTerm = isset($docNoTerm[0]) ? $docNoTerm[0] : 0;
+            $df = $lenDoc - $docNoTerm;
+            $idf[$word] = 1 + log10($lenDoc / $df);
+        }
+
+        foreach ($weight as $word => $data) {
+            foreach ($data["tf"] as $docName => $tf) {
+                $weight[$word]["tf.idf"][$docName] = $tf * $idf[$word];
             }
         }
 
