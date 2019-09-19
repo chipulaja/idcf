@@ -9,14 +9,15 @@ final class WeightingTest extends TestCase
     /**
      * @dataProvider additionProvider
      */
-    public function testExecute($sentence, $expected, $weight, $docname)
+    public function testExecute($sentence, $expected, $w, $docname, $category)
     {
         $preprocessing = new \IDCF\Preprocessing();
         $weighting = new \IDCF\Weighting();
         $tokens = $preprocessing->execute($sentence);
-        $weight = $weighting->execute($tokens, $weight, $docname);
+        $return = $weighting->execute($tokens, $category, $docname, $w["weight"], $w["category"]);
 
-        $this->assertEquals($expected, $weight);
+        $this->assertEquals($expected["weight"], $return["weight"]);
+        $this->assertEquals($expected["category"], $return["category"]);
     }
 
     /**
@@ -31,11 +32,11 @@ final class WeightingTest extends TestCase
         $d5 = $this->getD5();
 
         return [
-            [$d1["sentence"], $d1["expected"], $d1["weight"], $d1["docname"]],
-            [$d2["sentence"], $d2["expected"], $d2["weight"], $d2["docname"]],
-            [$d3["sentence"], $d3["expected"], $d3["weight"], $d3["docname"]],
-            [$d4["sentence"], $d4["expected"], $d4["weight"], $d4["docname"]],
-            [$d5["sentence"], $d5["expected"], $d5["weight"], $d5["docname"]],
+            [$d1["sentence"], $d1["expected"], $d1["weighting"], $d1["docname"], $d1["category"]],
+            [$d2["sentence"], $d2["expected"], $d2["weighting"], $d2["docname"], $d2["category"]],
+            [$d3["sentence"], $d3["expected"], $d3["weighting"], $d3["docname"], $d3["category"]],
+            [$d4["sentence"], $d4["expected"], $d4["weighting"], $d4["docname"], $d4["category"]],
+            [$d5["sentence"], $d5["expected"], $d5["weighting"], $d5["docname"], $d5["category"]],
         ];
     }
 
@@ -46,24 +47,34 @@ final class WeightingTest extends TestCase
     {
         $sentence  = 'Sholat wajib dalam sehari terdiri dari 5 waktu yaitu sholat dzuhur, ';
         $sentence .= 'sholat ashar, sholat subuh, sholat maghrib dan sholat isya';
-        $weight    = [];
-        $expected  = <<<DOC
-| kata    | tf - d1 | tf.idf - d1 |
-| sholat  |   6     |    6.0      |
-| wajib   |   1     |    1.0      |
-| hari    |   1     |    1.0      |
-| dzuhur  |   1     |    1.0      |
-| ashar   |   1     |    1.0      |
-| subuh   |   1     |    1.0      |
-| maghrib |   1     |    1.0      |
-| isya    |   1     |    1.0      |
+        $weighting['weight'] = [];
+        $weighting['category'] = [];
+        $expectedWeight  = <<<DOC
+| kata    | tf - d1 | tf.idf - d1 | c - sholat | tf.idf.icf - d1 |
+| sholat  |   6     |    6.0      |    1       | 6.0             |
+| wajib   |   1     |    1.0      |    1       | 1.0             |
+| hari    |   1     |    1.0      |    1       | 1.0             |
+| dzuhur  |   1     |    1.0      |    1       | 1.0             |
+| ashar   |   1     |    1.0      |    1       | 1.0             |
+| subuh   |   1     |    1.0      |    1       | 1.0             |
+| maghrib |   1     |    1.0      |    1       | 1.0             |
+| isya    |   1     |    1.0      |    1       | 1.0             |
+DOC;
+
+        $expectedCategory  = <<<DOC
+| sholat |
+| d1     |
 DOC;
 
         return [
             "sentence" => $sentence,
-            "expected" => $this->stringTableToArray($expected),
-            "weight"   => $weight,
+            "expected" => [
+                'weight' => $this->stringTableToArray($expectedWeight),
+                'category' => $this->stringTableToArray($expectedCategory)
+            ],
+            "weighting"   => $weighting,
             "docname"  => "d1",
+            "category" => "sholat"
         ];
     }
 
@@ -74,37 +85,54 @@ DOC;
     {
         $sentence  = 'Sholat sunnah rowatib merupakan sholat sunnah yang dilakukan ';
         $sentence .= 'sebelum dan sesudah sholat wajib';
-        $weight    = <<<DOC
-| kata    | tf - d1 | tf.idf - d1 |
-| sholat  |   6     |    6.0      |
-| wajib   |   1     |    1.0      |
-| hari    |   1     |    1.0      |
-| dzuhur  |   1     |    1.0      |
-| ashar   |   1     |    1.0      |
-| subuh   |   1     |    1.0      |
-| maghrib |   1     |    1.0      |
-| isya    |   1     |    1.0      |
+        $weightingWeight = <<<DOC
+| kata    | tf - d1 | tf.idf - d1 | c - sholat | tf.idf.icf - d1 |
+| sholat  |   6     |    6.0      |    1       | 6.0             |
+| wajib   |   1     |    1.0      |    1       | 1.0             |
+| hari    |   1     |    1.0      |    1       | 1.0             |
+| dzuhur  |   1     |    1.0      |    1       | 1.0             |
+| ashar   |   1     |    1.0      |    1       | 1.0             |
+| subuh   |   1     |    1.0      |    1       | 1.0             |
+| maghrib |   1     |    1.0      |    1       | 1.0             |
+| isya    |   1     |    1.0      |    1       | 1.0             |
+DOC;
+        $weightingCategory = <<<DOC
+| sholat |
+| d1     |
 DOC;
 
-$expected  = <<<DOC
-| kata    | tf - d1 | tf - d2 | tf.idf - d1        | tf.idf - d2        |
-| sholat  |   6     |   3     | 6.0                | 3.0                |
-| wajib   |   1     |   1     | 1.0                | 1.0                |
-| hari    |   1     |   0     | 1.3010299956639813 | 0.0                |
-| dzuhur  |   1     |   0     | 1.3010299956639813 | 0.0                |
-| ashar   |   1     |   0     | 1.3010299956639813 | 0.0                |
-| subuh   |   1     |   0     | 1.3010299956639813 | 0.0                |
-| maghrib |   1     |   0     | 1.3010299956639813 | 0.0                |
-| isya    |   1     |   0     | 1.3010299956639813 | 0.0                |
-| sunnah  |   0     |   2     | 0.0                | 2.6020599913279625 |
-| rowatib |   0     |   1     | 0.0                | 1.3010299956639813 |
+        $expectedWeight  = <<<DOC
+| kata    | tf - d1 | tf - d2 | tf.idf - d1        | tf.idf - d2        | c - sholat | tf.idf.icf - d1    | tf.idf.icf - d2    |
+| sholat  |   6     |   3     | 6.0                | 3.0                |     1      | 6.0                | 3.0                |
+| wajib   |   1     |   1     | 1.0                | 1.0                |     1      | 1.0                | 1.0                |
+| hari    |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| dzuhur  |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| ashar   |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| subuh   |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| maghrib |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| isya    |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| sunnah  |   0     |   2     | 0.0                | 2.6020599913279625 |     1      | 0.0                | 2.6020599913279625 |
+| rowatib |   0     |   1     | 0.0                | 1.3010299956639813 |     1      | 0.0                | 1.3010299956639813 |
+DOC;
+
+        $expectedCategory  = <<<DOC
+| sholat |
+| d1     |
+| d2     |
 DOC;
 
         return [
             "sentence" => $sentence,
-            "expected" => $this->stringTableToArray($expected),
-            "weight"   => $this->stringTableToArray($weight),
+            "expected" => [
+                'weight' => $this->stringTableToArray($expectedWeight),
+                'category' => $this->stringTableToArray($expectedCategory)
+            ],
+            "weighting"   => [
+                'weight' => $this->stringTableToArray($weightingWeight),
+                'category' => $this->stringTableToArray($weightingCategory)
+            ],
             "docname"  => "d2",
+            "category" => "sholat"
         ];
     }
 
@@ -114,41 +142,59 @@ DOC;
     protected function getD3()
     {
         $sentence = "Sebelum melakukan sholat yang wajib dilakukan adalah bersuci yang biasa disebut wudlu";
-        $weight   =<<<DOC
-| kata    | tf - d1 | tf - d2 | tf.idf - d1        | tf.idf - d2        |
-| sholat  |   6     |   3     | 6.0                | 3.0                |
-| wajib   |   1     |   1     | 1.0                | 1.0                |
-| hari    |   1     |   0     | 1.3010299956639813 | 0.0                |
-| dzuhur  |   1     |   0     | 1.3010299956639813 | 0.0                |
-| ashar   |   1     |   0     | 1.3010299956639813 | 0.0                |
-| subuh   |   1     |   0     | 1.3010299956639813 | 0.0                |
-| maghrib |   1     |   0     | 1.3010299956639813 | 0.0                |
-| isya    |   1     |   0     | 1.3010299956639813 | 0.0                |
-| sunnah  |   0     |   2     | 0.0                | 2.6020599913279625 |
-| rowatib |   0     |   1     | 0.0                | 1.3010299956639813 |
+        $weightingWeight =<<<DOC
+| kata    | tf - d1 | tf - d2 | tf.idf - d1        | tf.idf - d2        | c - sholat | tf.idf.icf - d1    | tf.idf.icf - d2    |
+| sholat  |   6     |   3     | 6.0                | 3.0                |     1      | 6.0                | 3.0                |
+| wajib   |   1     |   1     | 1.0                | 1.0                |     1      | 1.0                | 1.0                |
+| hari    |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| dzuhur  |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| ashar   |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| subuh   |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| maghrib |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| isya    |   1     |   0     | 1.3010299956639813 | 0.0                |     1      | 1.3010299956639813 | 0.0                |
+| sunnah  |   0     |   2     | 0.0                | 2.6020599913279625 |     1      | 0.0                | 2.6020599913279625 |
+| rowatib |   0     |   1     | 0.0                | 1.3010299956639813 |     1      | 0.0                | 1.3010299956639813 |
+DOC;
+        $weightingCategory =<<<DOC
+| sholat |
+| d1     |
+| d2     |
 DOC;
 
-        $expected =<<<DOC
-| kata    | tf - d1 | tf - d2 | tf - d3 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        |
-| sholat  |   6     |   3     |   1     | 6.0                | 3.0                | 1.0                |
-| wajib   |   1     |   1     |   1     | 1.0                | 1.0                | 1.0                |
-| hari    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| dzuhur  |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| ashar   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| subuh   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| maghrib |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| isya    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| sunnah  |   0     |   2     |   0     | 0.0                | 2.9542425094393248 | 0.0                |
-| rowatib |   0     |   1     |   0     | 0.0                | 1.4771212547196624 | 0.0                |
-| suci    |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |
-| wudlu   |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |
+        $expectedWeight =<<<DOC
+| kata    | tf - d1 | tf - d2 | tf - d3 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | c - sholat | c - thoharoh | tf.idf.icf - d1    | tf.idf.icf - d2    | tf.idf.icf - d3    |
+| sholat  |   6     |   3     |   1     | 6.0                | 3.0                | 1.0                |     1      |     1        | 6.0                | 3.0                | 1.0                |
+| wajib   |   1     |   1     |   1     | 1.0                | 1.0                | 1.0                |     1      |     1        | 1.0                | 1.0                | 1.0                |
+| hari    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+| dzuhur  |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+| ashar   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+| subuh   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+| maghrib |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+| isya    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+| sunnah  |   0     |   2     |   0     | 0.0                | 2.9542425094393248 | 0.0                |     1      |     0        | 0.0                | 3.8435581192461936 | 0.0                |
+| rowatib |   0     |   1     |   0     | 0.0                | 1.4771212547196624 | 0.0                |     1      |     0        | 0.0                | 1.9217790596230968 | 0.0                |
+| suci    |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |     0      |     1        | 0.0                | 0.0                | 1.9217790596230968 |
+| wudlu   |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |     0      |     1        | 0.0                | 0.0                | 1.9217790596230968 |
+DOC;
+
+$expectedCategory  = <<<DOC
+| sholat | thoharoh |
+| d1     | d3       |
+| d2     |          |
 DOC;
 
         return [
             "sentence" => $sentence,
-            "expected" => $this->stringTableToArray($expected),
-            "weight"   => $this->stringTableToArray($weight),
+            "expected" => [
+                'weight' => $this->stringTableToArray($expectedWeight),
+                'category' => $this->stringTableToArray($expectedCategory)
+            ],
+            "weighting"   => [
+                'weight' => $this->stringTableToArray($weightingWeight),
+                'category' => $this->stringTableToArray($weightingCategory)
+            ],
             "docname"  => "d3",
+            "category" => "thoharoh"
         ];
     }
 
@@ -158,46 +204,63 @@ DOC;
     protected function getD4()
     {
         $sentence = "sholat jenazah merupakan sholat yang dilakukan setelah jenazah selesai dimandikan";
-        $weight   =<<<DOC
-| kata    | tf - d1 | tf - d2 | tf - d3 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        |
-| sholat  |   6     |   3     |   1     | 6.0                | 3.0                | 1.0                |
-| wajib   |   1     |   1     |   1     | 1.0                | 1.0                | 1.0                |
-| hari    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| dzuhur  |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| ashar   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| subuh   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| maghrib |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| isya    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |
-| sunnah  |   0     |   2     |   0     | 0.0                | 2.9542425094393248 | 0.0                |
-| rowatib |   0     |   1     |   0     | 0.0                | 1.4771212547196624 | 0.0                |
-| suci    |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |
-| wudlu   |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |
+        $weightingWeight =<<<DOC
+        | kata    | tf - d1 | tf - d2 | tf - d3 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | c - sholat | c - thoharoh | tf.idf.icf - d1    | tf.idf.icf - d2    | tf.idf.icf - d3    |
+        | sholat  |   6     |   3     |   1     | 6.0                | 3.0                | 1.0                |     1      |     1        | 6.0                | 3.0                | 1.0                |
+        | wajib   |   1     |   1     |   1     | 1.0                | 1.0                | 1.0                |     1      |     1        | 1.0                | 1.0                | 1.0                |
+        | hari    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+        | dzuhur  |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+        | ashar   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+        | subuh   |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+        | maghrib |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+        | isya    |   1     |   0     |   0     | 1.4771212547196624 | 0.0                | 0.0                |     1      |     0        | 1.9217790596230968 | 0.0                | 0.0                |
+        | sunnah  |   0     |   2     |   0     | 0.0                | 2.9542425094393248 | 0.0                |     1      |     0        | 0.0                | 3.8435581192461936 | 0.0                |
+        | rowatib |   0     |   1     |   0     | 0.0                | 1.4771212547196624 | 0.0                |     1      |     0        | 0.0                | 1.9217790596230968 | 0.0                |
+        | suci    |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |     0      |     1        | 0.0                | 0.0                | 1.9217790596230968 |
+        | wudlu   |   0     |   0     |   1     | 0.0                | 0.0                | 1.4771212547196624 |     0      |     1        | 0.0                | 0.0                | 1.9217790596230968 |
+DOC;
+        $weightingCategory =<<<DOC
+| sholat | thoharoh |
+| d1     | d3       |
+| d2     |          |
+DOC;
+        $expectedWeight = <<<DOC
+| kata    | tf - d1 | tf - d2 | tf - d3 | tf - d4 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | tf.idf - d4        |c - sholat | c - thoharoh | c - jenazah | tf.idf.icf - d1    | tf.idf.icf - d2    | tf.idf.icf - d3    | tf.idf.icf - d4    |
+| sholat  |   6     |   3     |   1     |   2     | 6.0                | 3.0                | 1.0                | 2.0                |    1      |      1       |     1       | 6.0                | 3.0                | 1.0                | 2.0                |
+| wajib   |   1     |   1     |   1     |   0     | 1.1249387366083    | 1.1249387366083    | 1.1249387366083    | 0.0                |    1      |      1       |     0       | 1.323030615098163  | 1.323030615098163  | 1.323030615098163  | 0.0                |
+| hari    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| dzuhur  |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| ashar   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| subuh   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| maghrib |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| isya    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| sunnah  |   0     |   2     |   0     |   0     | 0.0                | 3.204119982655925  | 0.0                | 0.0                |    1      |      0       |     0       | 0.0                | 4.732873729053063  | 0.0                | 0.0                |
+| rowatib |   0     |   1     |   0     |   0     | 0.0                | 1.6020599913279625 | 0.0                | 0.0                |    1      |      0       |     0       | 0.0                | 2.3664368645265315 | 0.0                | 0.0                |
+| suci    |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |    0      |      1       |     0       | 0.0                | 0.0                | 2.3664368645265315 | 0.0                |
+| wudlu   |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |    0      |      1       |     0       | 0.0                | 0.0                | 2.3664368645265315 | 0.0                |
+| jenazah |   0     |   0     |   0     |   2     | 0.0                | 0.0                | 0.0                | 3.204119982655925  |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 4.732873729053063  |
+| selesai |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 2.3664368645265315 |
+| mandi   |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 2.3664368645265315 |
 DOC;
 
-        $expected = <<<DOC
-| kata    | tf - d1 | tf - d2 | tf - d3 | tf - d4 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | tf.idf - d4        |
-| sholat  |   6     |   3     |   1     |   2     | 6.0                | 3.0                | 1.0                | 2.0                |
-| wajib   |   1     |   1     |   1     |   0     | 1.1249387366083    | 1.1249387366083    | 1.1249387366083    | 0.0                |
-| hari    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| dzuhur  |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| ashar   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| subuh   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| maghrib |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| isya    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| sunnah  |   0     |   2     |   0     |   0     | 0.0                | 3.204119982655925  | 0.0                | 0.0                |
-| rowatib |   0     |   1     |   0     |   0     | 0.0                | 1.6020599913279625 | 0.0                | 0.0                |
-| suci    |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |
-| wudlu   |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |
-| jenazah |   0     |   0     |   0     |   2     | 0.0                | 0.0                | 0.0                | 3.204119982655925  |
-| selesai |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |
-| mandi   |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |
+$expectedCategory  = <<<DOC
+| sholat | thoharoh | jenazah |
+| d1     | d3       | d4      |
+| d2     |          |         |
 DOC;
 
         return [
             "sentence" => $sentence,
-            "expected" => $this->stringTableToArray($expected),
-            "weight"   => $this->stringTableToArray($weight),
+            "expected" => [
+                'weight' => $this->stringTableToArray($expectedWeight),
+                'category' => $this->stringTableToArray($expectedCategory)
+            ],
+            "weighting"   => [
+                'weight' => $this->stringTableToArray($weightingWeight),
+                'category' => $this->stringTableToArray($weightingCategory)
+            ],
             "docname"  => "d4",
+            "category" => "jenazah"
         ];
     }
 
@@ -208,52 +271,71 @@ DOC;
     protected function getD5()
     {
         $sentence = "orang yang berhak memandikan jenazah adalah muhrimnya";
-        $weight   =<<<DOC
-| kata    | tf - d1 | tf - d2 | tf - d3 | tf - d4 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | tf.idf - d4        |
-| sholat  |   6     |   3     |   1     |   2     | 6.0                | 3.0                | 1.0                | 2.0                |
-| wajib   |   1     |   1     |   1     |   0     | 1.1249387366083    | 1.1249387366083    | 1.1249387366083    | 0.0                |
-| hari    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| dzuhur  |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| ashar   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| subuh   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| maghrib |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| isya    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |
-| sunnah  |   0     |   2     |   0     |   0     | 0.0                | 3.204119982655925  | 0.0                | 0.0                |
-| rowatib |   0     |   1     |   0     |   0     | 0.0                | 1.6020599913279625 | 0.0                | 0.0                |
-| suci    |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |
-| wudlu   |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |
-| jenazah |   0     |   0     |   0     |   2     | 0.0                | 0.0                | 0.0                | 3.204119982655925  |
-| selesai |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |
-| mandi   |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |
+        $weightingWeight =<<<DOC
+| kata    | tf - d1 | tf - d2 | tf - d3 | tf - d4 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | tf.idf - d4        |c - sholat | c - thoharoh | c - jenazah | tf.idf.icf - d1    | tf.idf.icf - d2    | tf.idf.icf - d3    | tf.idf.icf - d4    |
+| sholat  |   6     |   3     |   1     |   2     | 6.0                | 3.0                | 1.0                | 2.0                |    1      |      1       |     1       | 6.0                | 3.0                | 1.0                | 2.0                |
+| wajib   |   1     |   1     |   1     |   0     | 1.1249387366083    | 1.1249387366083    | 1.1249387366083    | 0.0                |    1      |      1       |     0       | 1.323030615098163  | 1.323030615098163  | 1.323030615098163  | 0.0                |
+| hari    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| dzuhur  |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| ashar   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| subuh   |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| maghrib |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| isya    |   1     |   0     |   0     |   0     | 1.6020599913279625 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.3664368645265315 | 0.0                | 0.0                | 0.0                |
+| sunnah  |   0     |   2     |   0     |   0     | 0.0                | 3.204119982655925  | 0.0                | 0.0                |    1      |      0       |     0       | 0.0                | 4.732873729053063  | 0.0                | 0.0                |
+| rowatib |   0     |   1     |   0     |   0     | 0.0                | 1.6020599913279625 | 0.0                | 0.0                |    1      |      0       |     0       | 0.0                | 2.3664368645265315 | 0.0                | 0.0                |
+| suci    |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |    0      |      1       |     0       | 0.0                | 0.0                | 2.3664368645265315 | 0.0                |
+| wudlu   |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 1.6020599913279625 | 0.0                |    0      |      1       |     0       | 0.0                | 0.0                | 2.3664368645265315 | 0.0                |
+| jenazah |   0     |   0     |   0     |   2     | 0.0                | 0.0                | 0.0                | 3.204119982655925  |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 4.732873729053063  |
+| selesai |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 2.3664368645265315 |
+| mandi   |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 1.6020599913279625 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 2.3664368645265315 |
 DOC;
 
-        $expected = <<<DOC
-| kata    | tf - d1 | tf - d2 | tf - d3 | tf - d4 | tf - d5 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | tf.idf - d4        | tf.idf - d5        |
-| sholat  |   6     |   3     |   1     |   2     |   0     | 6.581460078048339  | 3.2907300390241696 | 1.0969100130080565 | 2.193820026016113  | 0.0                |
-| wajib   |   1     |   1     |   1     |   0     |   0     | 1.2218487496163564 | 1.2218487496163564 | 1.2218487496163564 | 0.0                | 0.0                |
-| hari    |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |
-| dzuhur  |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |
-| ashar   |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |
-| subuh   |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |
-| maghrib |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |
-| isya    |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |
-| sunnah  |   0     |   2     |   0     |   0     |   0     | 0.0                | 3.3979400086720375 | 0.0                | 0.0                | 0.0                |
-| rowatib |   0     |   1     |   0     |   0     |   0     | 0.0                | 1.6989700043360187 | 0.0                | 0.0                | 0.0                |
-| suci    |   0     |   0     |   1     |   0     |   0     | 0.0                | 0.0                | 1.6989700043360187 | 0.0                | 0.0                |
-| wudlu   |   0     |   0     |   1     |   0     |   0     | 0.0                | 0.0                | 1.6989700043360187 | 0.0                | 0.0                |
-| jenazah |   0     |   0     |   0     |   2     |   1     | 0.0                | 0.0                | 0.0                | 2.795880017344075  | 1.3979400086720375 |
-| selesai |   0     |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 0.0                | 1.6989700043360187 | 0.0                |
-| mandi   |   0     |   0     |   0     |   1     |   1     | 0.0                | 0.0                | 0.0                | 1.3979400086720375 | 1.3979400086720375 |
-| orang   |   0     |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 0.0                | 1.6989700043360187 |
-| hak     |   0     |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 0.0                | 1.6989700043360187 |
-| muhrim  |   0     |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 0.0                | 1.6989700043360187 |
+        $weightingCategory =<<<DOC
+| sholat | thoharoh | jenazah |
+| d1     | d3       | d4      |
+| d2     |          |         |
+DOC;
+
+        $expectedWeight = <<<DOC
+| kata    | tf - d1 | tf - d2 | tf - d3 | tf - d4 | tf - d5 | tf.idf - d1        | tf.idf - d2        | tf.idf - d3        | tf.idf - d4        | tf.idf - d5        |c - sholat | c - thoharoh | c - jenazah | tf.idf.icf - d1    | tf.idf.icf - d2    | tf.idf.icf - d3    | tf.idf.icf - d4    | tf.idf.icf - d5    |
+| sholat  |   6     |   3     |   1     |   2     |   0     | 6.581460078048339  | 3.2907300390241696 | 1.0969100130080565 | 2.193820026016113  | 0.0                |    1      |      1       |     1       | 6.581460078048339  | 3.2907300390241696 | 1.0969100130080565 | 2.193820026016113  | 0.0                |
+| wajib   |   1     |   1     |   1     |   0     |   0     | 1.2218487496163564 | 1.2218487496163564 | 1.2218487496163564 | 0.0                | 0.0                |    1      |      1       |     0       | 1.4370056343119104 | 1.4370056343119104 | 1.4370056343119104 | 0.0                | 0.0                |
+| hari    |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.5095847045358903 | 0.0                | 0.0                | 0.0                | 0.0                |
+| dzuhur  |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.5095847045358903 | 0.0                | 0.0                | 0.0                | 0.0                |
+| ashar   |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.5095847045358903 | 0.0                | 0.0                | 0.0                | 0.0                |
+| subuh   |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.5095847045358903 | 0.0                | 0.0                | 0.0                | 0.0                |
+| maghrib |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.5095847045358903 | 0.0                | 0.0                | 0.0                | 0.0                |
+| isya    |   1     |   0     |   0     |   0     |   0     | 1.6989700043360187 | 0.0                | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 2.5095847045358903 | 0.0                | 0.0                | 0.0                | 0.0                |
+| sunnah  |   0     |   2     |   0     |   0     |   0     | 0.0                | 3.3979400086720375 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 0.0                | 5.019169409071781  | 0.0                | 0.0                | 0.0                |
+| rowatib |   0     |   1     |   0     |   0     |   0     | 0.0                | 1.6989700043360187 | 0.0                | 0.0                | 0.0                |    1      |      0       |     0       | 0.0                | 2.5095847045358903 | 0.0                | 0.0                | 0.0                |
+| suci    |   0     |   0     |   1     |   0     |   0     | 0.0                | 0.0                | 1.6989700043360187 | 0.0                | 0.0                |    0      |      1       |     0       | 0.0                | 0.0                | 2.5095847045358903 | 0.0                | 0.0                |
+| wudlu   |   0     |   0     |   1     |   0     |   0     | 0.0                | 0.0                | 1.6989700043360187 | 0.0                | 0.0                |    0      |      1       |     0       | 0.0                | 0.0                | 2.5095847045358903 | 0.0                | 0.0                |
+| jenazah |   0     |   0     |   0     |   2     |   1     | 0.0                | 0.0                | 0.0                | 2.795880017344075  | 1.3979400086720375 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 4.129853799264912  | 2.064926899632456  |
+| selesai |   0     |   0     |   0     |   1     |   0     | 0.0                | 0.0                | 0.0                | 1.6989700043360187 | 0.0                |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 2.5095847045358903 | 0.0                |
+| mandi   |   0     |   0     |   0     |   1     |   1     | 0.0                | 0.0                | 0.0                | 1.3979400086720375 | 1.3979400086720375 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 2.064926899632456  | 2.064926899632456  |
+| orang   |   0     |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 0.0                | 1.6989700043360187 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 0.0                | 2.5095847045358903 |
+| hak     |   0     |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 0.0                | 1.6989700043360187 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 0.0                | 2.5095847045358903 |
+| muhrim  |   0     |   0     |   0     |   0     |   1     | 0.0                | 0.0                | 0.0                | 0.0                | 1.6989700043360187 |    0      |      0       |     1       | 0.0                | 0.0                | 0.0                | 0.0                | 2.5095847045358903 |
+DOC;
+
+$expectedCategory  = <<<DOC
+| sholat | thoharoh | jenazah |
+| d1     | d3       | d4      |
+| d2     |          | d5      |
 DOC;
 
         return [
             "sentence" => $sentence,
-            "expected" => $this->stringTableToArray($expected),
-            "weight"   => $this->stringTableToArray($weight),
+            "expected" => [
+                'weight' => $this->stringTableToArray($expectedWeight),
+                'category' => $this->stringTableToArray($expectedCategory)
+            ],
+            "weighting"   => [
+                'weight' => $this->stringTableToArray($weightingWeight),
+                'category' => $this->stringTableToArray($weightingCategory)
+            ],
             "docname"  => "d5",
+            "category" => "jenazah"
         ];
     }
 
@@ -282,12 +364,19 @@ DOC;
                         $d = trim($data[$a]);;
                         if (is_numeric($d)) {
                             if (substr_count($d, '.') == 0) {
-                                $d = int($d);
+                                $d = (int)$d;
                             } elseif (substr_count($d, '.') == 1) {
                                 $d = float($d);
                             }
                         }
-                        $arr[$kata[$index]][trim($h[0])] = $d;
+                        if (isset($kata[$index])) {
+                            $arr[$kata[$index]][trim($h[0])] = $d;
+                        } else {
+                            if ($d != '') {
+                                $arr[trim($h[0])][] = $d;
+                            }
+                        }
+
                     } else {
                         $d = trim($data[$a]);;
                         if (is_numeric($d)) {
