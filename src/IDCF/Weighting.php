@@ -22,6 +22,7 @@ class Weighting
 
         $categoryList = $this->addCategory($category, $docName, $categoryList);
         $weight = $this->tfIdfIcfCounter($weight, $categoryList);
+        $weight = $this->tdcfIdcfCounter($weight, $categoryList);
 
         return ['weight' => $weight, 'category' => $categoryList];
     }
@@ -143,6 +144,35 @@ class Weighting
             foreach ($data["tf"] as $docName => $tf) {
                 $tfIdf = $weight[$word]["tf.idf"][$docName];
                 $weight[$word]["tf.idf.icf"][$docName] = $tfIdf * $icf[$word];
+            }
+        }
+
+        return $weight;
+    }
+
+    /**
+     * @param array $weight
+     * @return array
+     */
+    protected function tdcfIdcfCounter($weight, $categoryList)
+    {
+        foreach ($weight as $word => $data) {
+            foreach ($categoryList as $category => $docNameList) {
+                $dc   = sizeof($docNameList);
+                $dcf  = 0;
+                $tdcf = 0;
+                foreach ($docNameList as $docName) {
+                    if ($weight[$word]["tf"][$docName] > 0) {
+                        $dcf += 1;
+                    }
+                    $tdcf += $weight[$word]["tf"][$docName];
+                }
+
+                $idcf = (float)0;
+                if ($dcf != 0) {
+                    $idcf = 1 + log10($dc / $dcf);
+                }
+                $weight[$word]["tdcf.idcf"]["$category"] = $tdcf * $idcf;
             }
         }
 
