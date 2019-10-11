@@ -1,5 +1,5 @@
 {
-    "name": "IDCF",
+    "name": "chipulaja/idcf",
     "description": "Inverted Document Class Frequency",
     "keywords": ["idcf", "classification"],
     "license": "MIT",
