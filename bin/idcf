@@ -1,0 +1,33 @@
+#!/usr/bin/env php
+<?php
+
+include_once __DIR__.'/../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use Symfony\Component\Yaml\Yaml;
+
+$reflection = new \ReflectionClass(\Composer\Autoload\ClassLoader::class);
+$projectDir = dirname($reflection->getFileName(), 3);
+$configFile = $projectDir.'/config/config.yml';
+$config = Yaml::parse(file_get_contents($configFile));
+$configNames = ["idcfFile", "issueFile"];
+
+foreach ($configNames as $configName) {
+    if (!in_array($configName, array_keys($config))) {
+        die("please set $configName at $configFile");
+    }
+}
+
+$config["idcfFile"] = str_replace("%projectDir%", $projectDir, $config["idcfFile"]);
+$config["issueFile"] = str_replace("%projectDir%", $projectDir, $config["issueFile"]);
+$application = new Application('idfc', '1.0.0');
+
+$commandList = [
+    'trainingAdd' => new \IDCF\Console\Command\TrainingAdd($config)
+];
+
+foreach ($commandList as $command) {
+    $application->add($command);
+}
+
+$application->run();

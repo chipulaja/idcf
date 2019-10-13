@@ -3,3 +3,6 @@ composer.phar
 /coverage/*
 .phpunit.result.cache
 reference
+/temp/*
+/log/*
+todolist.txt
