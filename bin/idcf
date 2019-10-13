@@ -23,7 +23,8 @@ $config["issueFile"] = str_replace("%projectDir%", $projectDir, $config["issueFi
 $application = new Application('idfc', '1.0.0');
 
 $commandList = [
-    'trainingAdd' => new \IDCF\Console\Command\TrainingAdd($config)
+    'trainingAdd' => new \IDCF\Console\Command\TrainingAdd($config),
+    'trainingDelete' => new \IDCF\Console\Command\TrainingDelete($config)
 ];
 
 foreach ($commandList as $command) {
