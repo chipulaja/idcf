@@ -111,7 +111,7 @@ class TrainingAdd extends Command
 
     protected function getW()
     {
-        $w = ["i" => 0, "weight" => [], "category" => []];
+        $w = ["i" => 0, "weight" => [], "classList" => []];
         if (file_exists($this->idcfFile)) {
             $json = file_get_contents($this->idcfFile);
             $idcf = json_decode($json, true);
@@ -131,7 +131,7 @@ class TrainingAdd extends Command
         return $progressBar;
     }
 
-    protected function training($filePath, $type, $w)
+    protected function training($filePath, $type, &$w)
     {
         try {
             if ($type === 'csv') {
@@ -165,10 +165,10 @@ class TrainingAdd extends Command
                 $flag = false;
                 continue;
             }
-            $category = $row[$header["kata kunci"]];
+            $class = $row[$header["kata kunci"]];
             $content  = $row[$header["isi"]];
 
-            if (empty($category) || empty($content)) {
+            if (empty($class) || empty($content)) {
                 throw new FileFormatException($filePath." : Category or content cannot by empty");
             }
 
@@ -176,22 +176,22 @@ class TrainingAdd extends Command
             $weighting = new \IDCF\Weighting();
             $tokens = $preprocessing->execute($content);
             $docname = "d".++$wi;
-            $w = $weighting->execute($tokens, $category, $docname, $w["weight"], $w["category"]);
+            $w = $weighting->execute($tokens, $class, $docname, $w["weight"], $w["classList"]);
             $w["i"] = $wi;
         }
         return $w;
     }
 
-    protected function xmlTrainer($filePath, $w)
+    protected function xmlTrainer($filePath, &$w)
     {
         $artikel = @simplexml_load_file($filePath);
         if ($artikel === false) {
             throw new FileFormatException($filePath." : Please check format xml");
         }
 
-        $category = (string)$artikel->kata_kunci;
+        $class = (string)$artikel->kata_kunci;
         $content  = (string)$artikel->isi;
-        if (empty($category) || empty($content)) {
+        if (empty($class) || empty($content)) {
             throw new FileFormatException($filePath." : Category or content cannot by empty");
         }
 
@@ -200,7 +200,7 @@ class TrainingAdd extends Command
         $tokens = $preprocessing->execute($content);
         $wi = $w["i"];
         $docname = "d".++$wi;
-        $w = $weighting->execute($tokens, $category, $docname, $w["weight"], $w["category"]);
+        $w = $weighting->execute($tokens, $class, $docname, $w["weight"], $w["classList"]);
         $w["i"] = $wi;
         return $w;
     }
