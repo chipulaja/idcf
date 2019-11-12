@@ -1,6 +1,6 @@
 #!/usr/bin/env php
 <?php
-
+ini_set('memory_limit','-1');
 include_once __DIR__.'/../vendor/autoload.php';
 
 use Symfony\Component\Console\Application;
@@ -24,7 +24,8 @@ $application = new Application('idfc', '1.0.0');
 
 $commandList = [
     'trainingAdd' => new \IDCF\Console\Command\TrainingAdd($config),
-    'trainingDelete' => new \IDCF\Console\Command\TrainingDelete($config)
+    'trainingDelete' => new \IDCF\Console\Command\TrainingDelete($config),
+	'trainingInfo' => new \IDCF\Console\Command\TrainingInfo($config)
 ];
 
 foreach ($commandList as $command) {
